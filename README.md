@@ -8,7 +8,8 @@
 <br clear="left" />
 
 <p align="center">
-  <img src="media/cm_screen_1.jpg" align="centre" width="480" />
+  <img src="media/cm_screen_2.gif" width="480" />
+  <img src="media/cm_screen_1.jpg" width="480" />
 </p>
 
 
