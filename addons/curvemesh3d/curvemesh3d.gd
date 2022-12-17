@@ -51,7 +51,7 @@ extends Path3D
 @export var material: StandardMaterial3D:
 	set(value):
 		material = value
-		if(cm_mesh): 
+		if(cm_mesh && cm_mesh.get_surface_count() > 0): 
 			cm_mesh.surface_set_material(0, value)
 
 
