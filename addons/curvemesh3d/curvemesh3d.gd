@@ -176,13 +176,13 @@ func cm_gen_vertices():
 	var plist = curve.get_baked_points() as PackedVector3Array
 	var psize = plist.size()
 	if(psize < 2): return 0
-	var cur_squared_length = 0.0
+	var cur_length = 0.0
 	var total_length = cm_get_curve_length(plist)
 	cm_gen_circle_verts(cm_get_aligned_transform(plist[0], plist[1], 0.0), 0.0)
 	for i in range(0, psize - 1):
-		cur_squared_length += plist[i].distance_to(plist[i + 1])
+		cur_length += plist[i].distance_to(plist[i + 1])
 		var t3d = cm_get_aligned_transform(plist[i], plist[i + 1], 1.0)
-		cm_gen_circle_verts(t3d, cur_squared_length / total_length)
+		cm_gen_circle_verts(t3d, cur_length / total_length)
 	return psize
 
 func cm_gen_faces(psize: int):
