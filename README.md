@@ -15,7 +15,7 @@
 
 ## Getting Started
 
-1. Download the repository [here](https://github.com/cloudofoz/godot-curvemesh/archive/refs/heads/main.zip) or ~~download the addon from the AssetLib in Godot~~(not yet)
+1. Download the repository [here](https://github.com/cloudofoz/godot-curvemesh/archive/refs/heads/main.zip) or download the addon from the AssetLib in Godot ([link](https://godotengine.org/asset-library/asset/1579)).
 2. Import the **addons** folder into your project.
 3. Activate `CurveMesh3D` under * *Project > Project Settings > Plugins.* *
 4. Add a `CurveMesh3D` node to the scene.
