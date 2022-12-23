@@ -22,6 +22,11 @@
 extends Path3D
 
 #---------------------------------------------------------------------------------------------------
+# CONSTANTS
+#---------------------------------------------------------------------------------------------------
+const CM_HALF_PI = PI / 2.0
+
+#---------------------------------------------------------------------------------------------------
 # PUBLIC VARIABLES
 #---------------------------------------------------------------------------------------------------
 @export_category("CurveMesh3D")
@@ -55,6 +60,40 @@ extends Path3D
 			cm_mesh.surface_set_material(0, value)
 
 
+@export_group("Caps", "cap_")
+
+## If 'true' the generated mesh starts with an hemispherical surface
+@export var cap_start: bool = true:
+	set(value):
+		cap_start = value
+		curve_changed.emit()
+
+## If 'true' the generated mesh ends with an hemispherical surface
+@export var cap_end: bool = true:
+	set(value):
+		cap_end = value
+		curve_changed.emit()
+ 
+## Number of rings that are used to create the hemispherical cap
+## note: the number of vertices of each ring depends on [radial_resolution]
+@export_range(1, 32, 1, "or_greater") var cap_rings: int = 4:
+	set(value):
+		cap_rings = value
+		curve_changed.emit()
+
+## Scale caps UV coords by this factor
+@export var cap_uv_scale: float = 0.1:
+	set(value):
+		cap_uv_scale = value
+		curve_changed.emit()
+
+## Shift caps UV coords by this offset 
+@export var cap_uv_offset: Vector2 = Vector2.ZERO:
+	set(value):
+		cap_uv_offset = value
+		curve_changed.emit()
+
+
 @export_group("View", "cm_")
 
 ## Turn this off to disable mesh generation
@@ -64,7 +103,7 @@ extends Path3D
 		if(!value): cm_clear()
 		else: curve_changed.emit()
 
-## If [cm_debug_mode=true] the node will draw only the curve silhouette (run-time visibile)
+## If [cm_debug_mode=true] the node will draw only a run-time visibile curve
 @export var cm_debug_mode = false:
 	set(value):
 		cm_debug_mode = value
@@ -110,19 +149,19 @@ func _ready() -> void:
 	if(!cm_mesh): 
 		cm_mesh = ArrayMesh.new()
 	else: 
-		cm_mesh.clear_surfaces()	
+		cm_mesh.clear_surfaces()
 	if(!cm_mesh_instance):
 		cm_mesh_instance = MeshInstance3D.new()
 		cm_mesh_instance.mesh = cm_mesh
 		cm_mesh_instance.set_meta("__cm3d_internal__", true)
-		add_child(cm_mesh_instance)		
+		add_child(cm_mesh_instance)
 	if(!curve || curve.point_count < 2): 
 		curve = cm_create_default_curve()
 	if(!material): 
 		material = cm_create_default_material()
-	if(!radius_profile):
+	if(!radius_profile): 
 		self.radius_profile = cm_create_default_radius_profile()
-	curve_changed.connect(cm_on_curve_changed)	
+	curve_changed.connect(cm_on_curve_changed)
 	curve_changed.emit()
 
 #---------------------------------------------------------------------------------------------------
@@ -156,38 +195,90 @@ func cm_gen_circle_verts(t3d: Transform3D, t: float = 0.0):
 		cm_st.set_uv(Vector2(float(i) / radial_resolution, t))
 		cm_st.add_vertex(v)
 
-func cm_gen_curve_segment(start_index: int):
-	# radial_resolution +1 because: first and last vertex are in the same position 
+func cm_gen_curve_segment(start_ring_idx: int):
+	# radial_resolution +1 because: first and last vertices are in the same position 
 	# BUT have 2 different UVs: v_first = uv[0.0, y_coord] | v_last = uv[1.0, y_coord] 
-	var ring_vcount = radial_resolution + 1 
-	start_index *= ring_vcount
-	for a in range(0, radial_resolution):
+	var ring_vtx_count = radial_resolution + 1 
+	start_ring_idx *= ring_vtx_count
+	for a in range(start_ring_idx, start_ring_idx + radial_resolution):
 		var b = a + 1
-		var d = a + ring_vcount
+		var d = a + ring_vtx_count
 		var c = d + 1
-		cm_st.add_index(start_index + a)
-		cm_st.add_index(start_index + b)
-		cm_st.add_index(start_index + c)
-		cm_st.add_index(start_index + a)
-		cm_st.add_index(start_index + c)
-		cm_st.add_index(start_index + d)
+		cm_st.add_index(a)
+		cm_st.add_index(b)
+		cm_st.add_index(c)
+		cm_st.add_index(a)
+		cm_st.add_index(c)
+		cm_st.add_index(d)
+
+func cm_gen_curve_segments_range(start_ring_idx: int, ring_count: int) -> int:
+	for i in ring_count:
+		cm_gen_curve_segment(start_ring_idx + i)
+	return start_ring_idx + ring_count
+
+# parametric eq. for hemisphere on a XZ plane:
+#1. x = x0 + r * sin(beta) * cos(alpha)
+#2. y = z0 + r * cos(beta)
+#3. z = y0 + r * sin(beta) * sin(alpha)
+#4. 0 <= beta  <= HALF_PI                 # "it's an hemisphere!"
+#5. 0 <= alpha <= TAU                     # TAU = 2 * PI
+func cm_gen_cap_verts(t3d: Transform3D, is_cap_start: bool):
+	var alpha_step: float = TAU / radial_resolution
+	var beta_step: float = CM_HALF_PI / cap_rings
+	var c = Vector3.ZERO * t3d
+	var r: float
+	var beta_offset: float
+	var beta_direction: float
+	if is_cap_start:
+			r = cm_get_radius(0.0)
+			beta_offset = CM_HALF_PI
+			beta_direction = +1.0
+	else: #is_cap_end
+			r = cm_get_radius(1.0)
+			beta_offset = 0.0
+			beta_direction = -1.0
+	for ring_idx in range(cap_rings, -1, -1):
+		var beta = beta_offset + ring_idx * beta_step * beta_direction
+		var sin_beta = sin(beta)
+		var cos_beta = cos(beta)
+		for v_idx in (radial_resolution + 1):
+			var alpha = (v_idx % radial_resolution) * alpha_step
+			var v = Vector3(r * sin_beta * cos(alpha), r * cos_beta, r * sin_beta * sin(alpha)) * t3d
+			cm_st.set_uv(Vector2(float(v_idx) / float(radial_resolution), 1.0) * sin_beta * cap_uv_scale + cap_uv_offset) 
+			cm_st.set_normal((v-c).normalized())
+			cm_st.add_vertex(v)
 
 func cm_gen_vertices():
+	if(!curve): return 0
 	var plist = curve.get_baked_points() as PackedVector3Array
 	var psize = plist.size()
 	if(psize < 2): return 0
 	var cur_length = 0.0
 	var total_length = cm_get_curve_length(plist)
-	cm_gen_circle_verts(cm_get_aligned_transform(plist[0], plist[1], 0.0), 0.0)
+	var t3d = cm_get_aligned_transform(plist[0], plist[1], 0.0)
+	if(cap_start): cm_gen_cap_verts(t3d, true)
+	cm_gen_circle_verts(t3d, 0.0)
 	for i in range(0, psize - 1):
 		cur_length += plist[i].distance_to(plist[i + 1])
-		var t3d = cm_get_aligned_transform(plist[i], plist[i + 1], 1.0)
-		cm_gen_circle_verts(t3d, cur_length / total_length)
+		t3d = cm_get_aligned_transform(plist[i], plist[i + 1], 1.0)
+		cm_gen_circle_verts(t3d, min(cur_length / total_length, 1.0))
+	if(cap_end): cm_gen_cap_verts(t3d, false)
 	return psize
 
+# The whole mesh could be generated by one call, like this:
+# cm_gen_curve_segments_range(0, cap_rings * 2 + psize - 1).
+# But, at the moment, the two caps have a different uv mapping than the curve mesh.
+# For this reason caps don't share vertices with the main curve and so 
+# we need 3 separated calls of 'cm_gen_curve_segments_range()':
+# cap_start_mesh |+1| curve_mesh |+1| cap_end_mesh
+# (+1 means that we "jump" to another set of vertices).
 func cm_gen_faces(psize: int):
-	for i in range (0, psize - 1):
-		cm_gen_curve_segment(i)
+	var start_idx: int = 0
+	if(cap_start):
+		start_idx = cm_gen_curve_segments_range(0, cap_rings) + 1
+	start_idx = cm_gen_curve_segments_range(start_idx, psize - 1) + 1
+	if(cap_end):
+		start_idx = cm_gen_curve_segments_range(start_idx, cap_rings) + 1
 
 func cm_clear() -> bool:
 	if(!cm_st || !cm_mesh): return false
@@ -220,6 +311,7 @@ func cm_create_default_curve() -> Curve3D:
 	var ctp = Vector3(0.6, 0.46, 0)
 	c.add_point(Vector3.ZERO, ctp, ctp)
 	c.add_point(Vector3.UP, -ctp, -ctp)
+	c.bake_interval = 0.1
 	return c
 
 func cm_create_default_material() -> StandardMaterial3D:
@@ -230,9 +322,9 @@ func cm_create_default_material() -> StandardMaterial3D:
 
 func cm_create_default_radius_profile() -> Curve:
 	var c = Curve.new()
-	c.add_point(Vector2(0,0.05))
-	c.add_point(Vector2(0.5,1))
-	c.add_point(Vector2(1,0.05))
+	c.add_point(Vector2(0.0, 0.05))
+#	c.add_point(Vector2(0.5, 0.5))
+	c.add_point(Vector2(1.0, 1.0))
 	return c
 
 func cm_clear_duplicated_internal_children():
