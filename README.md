@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/Godot-v4.0%20(beta%2017)-informational) ![License](https://img.shields.io/github/license/cloudofoz/godot-curvemesh)
+![Version](https://img.shields.io/badge/Godot-v4.0%20(RC%205)-informational) ![License](https://img.shields.io/github/license/cloudofoz/godot-curvemesh)
 
 <img src="addons/curvemesh3d/icon.svg" width="64" align="left"/>
 
