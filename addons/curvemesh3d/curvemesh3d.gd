@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Claudio Z. (cloudofoz)
+# Copyright (C) 2022-2024 Claudio Z. (cloudofoz)
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,6 +20,8 @@
 
 @tool
 extends Path3D
+
+class_name CurveMesh3D
 
 #---------------------------------------------------------------------------------------------------
 # CONSTANTS
