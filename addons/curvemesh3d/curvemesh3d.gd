@@ -65,9 +65,9 @@ const CM_HALF_PI = PI / 2.0
 @export_group("Caps", "cap_")
 
 enum CapType {
-	None,
-	Flat,
-	Hemisphere
+	None, ## Does not fill the cap with any geometry.
+	Flat, ## Fills the cap with a flat disc.
+	Hemisphere ## Fills the cap with a hemisphere.
 }
 
 ## Determines the shape the generated mesh starts with
