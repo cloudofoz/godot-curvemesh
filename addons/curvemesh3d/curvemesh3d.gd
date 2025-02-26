@@ -243,19 +243,26 @@ func cm_gen_curve_segments_range(start_ring_idx: int, ring_count: int) -> int:
 func cm_gen_cap_verts(t3d: Transform3D, is_cap_start: bool):
 	var num_of_rings:int
 	var height_multiplier:float
-	if (is_cap_start and cap_start_type == CapType.Flat) or (!is_cap_start and cap_end_type == CapType.Flat):
+	
+	var cap_is_flat = (cap_start_type if is_cap_start else cap_end_type) == CapType.Flat
+	
+	if cap_is_flat:
 		# This cap is flat
 		num_of_rings = 1
 		height_multiplier = 0.0
+		# Normal for the flat surface
+		cm_st.set_normal(Vector3.UP * t3d)
 	else:
 		num_of_rings = cap_rings
 		height_multiplier = 1.0
+	
 	var alpha_step: float = TAU / radial_resolution
 	var beta_step: float = CM_HALF_PI / num_of_rings
 	var c = Vector3.ZERO * t3d
 	var r: float
 	var beta_offset: float
 	var beta_direction: float
+	
 	if is_cap_start:
 			r = cm_get_radius(0.0)
 			beta_offset = CM_HALF_PI
@@ -264,6 +271,7 @@ func cm_gen_cap_verts(t3d: Transform3D, is_cap_start: bool):
 			r = cm_get_radius(1.0)
 			beta_offset = 0.0
 			beta_direction = -1.0
+
 	for ring_idx in range(num_of_rings, -1, -1):
 		var beta = beta_offset + ring_idx * beta_step * beta_direction
 		var sin_beta = sin(beta)
@@ -272,7 +280,8 @@ func cm_gen_cap_verts(t3d: Transform3D, is_cap_start: bool):
 			var alpha = (v_idx % radial_resolution) * alpha_step
 			var v = Vector3(r * sin_beta * cos(alpha),r * cos_beta * height_multiplier,r * sin_beta * sin(alpha)) * t3d
 			cm_st.set_uv(Vector2(float(v_idx) / float(radial_resolution), 1.0) * sin_beta * cap_uv_scale + cap_uv_offset) 
-			cm_st.set_normal((v-c).normalized())
+			if !cap_is_flat:
+				cm_st.set_normal((v-c).normalized())
 			cm_st.add_vertex(v)
 
 func cm_gen_vertices():
