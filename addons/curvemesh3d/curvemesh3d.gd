@@ -251,7 +251,8 @@ func cm_gen_cap_verts(t3d: Transform3D, is_cap_start: bool):
 		num_of_rings = 1
 		height_multiplier = 0.0
 		# Normal for the flat surface
-		cm_st.set_normal(Vector3.UP * t3d)
+		var normal_dir = Vector3.DOWN if is_cap_start else Vector3.UP
+		cm_st.set_normal(normal_dir * t3d)
 	else:
 		num_of_rings = cap_rings
 		height_multiplier = 1.0
