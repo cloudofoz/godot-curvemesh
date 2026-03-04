@@ -23,7 +23,7 @@ extends EditorPlugin
 
 
 func _enter_tree() -> void:
-	add_custom_type("CurveMesh3D", "Path3D", preload("curvemesh3d.gd"), preload("icon.svg"))
+	add_custom_type("CurveMesh3D", "Path3D", preload("curvemesh3d.gd"), preload("icon.png"))
 	
 
 func _exit_tree() -> void:
